@@ -1,0 +1,8 @@
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([\d]+)/(.*)$ $1/index.php [QSA,L]
+
+#ErrorDocument 500 "{ 'result': 'success', 'message': null, 'requestTime': 0, 'verboseMsgs': [], 'data': [] }"
+#ErrorDocument 404 '{ "result": "error","message": "Not found", "requestTime":0, "verboseMsgs": [],"data": [] }'
+#ErrorDocument 401 /subscription/how_to_subscribe.html
