@@ -20,13 +20,25 @@ define('API_FILTER_NUMEERIC_RANGE', 3);
 
 global $db;
 
+
+// Include the sconfig file, or create it if it does not exist...
+// onfig file contains, amongst other things, the log level..
+if (!file_exists('../config.php')) {
+    $fh = fopen('../config.php', 'w');
+    $secret = random_str(32);
+    fwrite($fh, "<?php\n\$log_level = Psr\\Log\\LogLevel::DEBUG;\n");
+    fclose($fh);
+}
+include_once '../config.php';
+global $log_level;
+
 # Set up logging object.
-$logger = new Katzgrau\KLogger\Logger(__DIR__.'/../logs', Psr\Log\LogLevel::DEBUG, array (
+$logger = new Katzgrau\KLogger\Logger(__DIR__.'/../logs', $log_level, array (
     'extension' => 'log', // changes the log file extension
     'prefix' => 'ns_',
 ));
 
-require_once __DIR__.'/../../conf/constant.php';
+require_once __DIR__.'/../../conf/constant.php';  // Import the DB connection stuff from NotauScore itself.
 require_once __DIR__.'/../../api/error.php';
 
 

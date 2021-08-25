@@ -262,3 +262,117 @@ function getGeneric(&$resultObj, $query, $paramArr = null) {
     db_rollback:
     return $resultObj["data"];
 }
+
+function getDetailsForCompetitions(&$resultObj) {
+    global $logger;
+
+    // Now, for the 'competition' array, we should grab the flights.
+    $logger->info("There are " . count($resultObj["data"]) . " competitions to populate.");
+    foreach ($resultObj["data"] as &$comp) {
+        $flightResultsObj = createEmptyResultObject();
+        $flightsQry = "select * from ffam_vol where cmpid = :cmpid";
+        $flightParamArray = array(
+            "cmpid" => $comp["cmpid"]
+        );
+        $comp["flights"] = getGeneric($flightResultsObj, $flightsQry, $flightParamArray);
+        // Convention says to remove the ID column from the JSON data.
+        //stripColumnsFromResults($comp["flights"], "cmpid");
+        mergeResultMessages($resultObj, $flightResultsObj);
+        unset($flightResultsObj);
+
+        // Flat object model (for the most part).
+        // Add the 'pilots' who should have flown this comp.
+        $pilotResultsObj = createEmptyResultObject();
+        $pilotQry = "select * from ffam_pilote where cmpid = :cmpid";
+        $pilotParamArray = array(
+            "cmpid" => $comp["cmpid"]
+        );
+        $comp["pilots"] = getGeneric($pilotResultsObj, $pilotQry, $pilotParamArray);
+        mergeResultMessages($resultObj, $pilotResultsObj);
+        unset ($pilotResultsObj);
+
+        // Add the 'schedules' (programmes) to the array.
+        $scheduleResultsObj = createEmptyResultObject();
+        //$scheduleQry = "select * from ffam_programme where cmpid = :cmpid";
+        $scheduleQry = "select * from ffam_programme where catid = :catid";
+        $scheduleParamArray = array(
+            "catid" => $comp["catid"]
+        );
+        $cat = getCategoryById($comp["catid"]);
+        $catname = is_null($cat) ? "Undefined Class" : $cat["libelle"];
+        $logger->info("Getting schedules for competition: " . $comp["cmplibelle"]);
+        $logger->info("\t\tCategory: " . $catname);
+
+        $comp["programmes"] = getGeneric($scheduleResultsObj, $scheduleQry, $scheduleParamArray);
+        mergeResultMessages($resultObj, $scheduleResultsObj);
+        unset ($scheduleResultsObj);
+
+        foreach ($comp["flights"] as &$flight) {
+
+            // Finally, add the 'notes' (scores) to each flight record.
+            $judgeArray = array();  // Assoc. array of judges id<->pos mapping.
+            $judgePos = 1;  // This denotes the judges position in the judges panel.   Assigned arbitarially.
+            $flight["notes"] = array();
+
+            $noteResultsObj = createEmptyResultObject();
+            //$noteQry = "select * from ffam_note where volid = :volid and cmpid = :cmpid and pilid = :pilid";
+            $noteQry = "SELECT V.volid, N.pilid, N.jugeid, F.figposition, N.note
+                                FROM `ffam_note` N INNER JOIN `ffam_figure` F ON N.figid = F.figid
+                                INNER JOIN ffam_vol V ON N.volid = V.volid WHERE V.volid = :volid
+                                ORDER BY pilid, jugeid, noteid;";
+
+            $noteParamArray = array(
+                "volid" => $flight["volid"],
+            );
+
+            getGeneric($noteResultsObj, $noteQry, $noteParamArray);
+
+            foreach($noteResultsObj["data"] as $note) {
+                if (!isset($judgeArray[$note["jugeid"]])) {
+                    // New judge...    Lets assign a position (does not matter which, so long as it's the same for whole round).
+                    $currentJudgePos = $judgePos++;
+                    $judgeArray[$note["jugeid"]] = $currentJudgePos;
+                    $logger->debug("Assigned pos " . $currentJudgePos . " to judge " . $note["jugeid"]);
+                } else {
+                    $currentJudgePos =  $judgeArray[$note["jugeid"]];
+                    $logger->debug("Retrieved pos " . $currentJudgePos . " for judge " . $note["jugeid"]);
+                }
+                $note["jugepos"] = $currentJudgePos;
+                array_push($flight["notes"], $note);
+            }
+            mergeResultMessages($resultObj, $noteResultsObj);
+            unset ($noteResultsObj);
+        }
+        unset ($flight);
+
+        // Add the 'figures' to each schedule record.
+        foreach ($comp["programmes"] as &$prog) {
+            $figResultsObj = createEmptyResultObject();
+            $figQry = "select * from ffam_figure where prgid = :prgid";
+            $figParamArray = array(
+                "prgid" => $prog["prgid"]
+            );
+            $prog["figures"] = getGeneric($figResultsObj, $figQry, $figParamArray);
+            //stripColumnsFromResults($prog["figures"] , "prgid");
+            mergeResultMessages($resultObj, $figResultsObj);
+            unset ($figResultsObj);
+        }
+
+    }
+    unset($prog);
+}
+
+function getCategoryById ($catid) {
+    // Get category by id.
+    global $logger;
+    $catResultsObj = createEmptyResultObject();
+    $catQry = "SELECT c.*, t.typecode, t.typelibelle FROM `core_categorie` c inner join `core_type` t WHERE t.typeid = c.typeid AND c.id = :catid";
+    $catParamArray = array(
+        "catid" => $catid
+    );
+    $category = getGeneric($catResultsObj, $catQry, $catParamArray);
+    $logger->debug("Category: " . print_r($category, true));
+
+    return(empty($category) ? null : $category[0]);
+
+}
