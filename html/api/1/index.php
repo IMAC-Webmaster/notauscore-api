@@ -129,9 +129,10 @@ Flight::route ("GET /categories", function() {
 
 Flight::route ("GET /competitions", function() {
     global $resultObj, $logger;
-    $query = "select * from ffam_competition where 1";
+    //$query = "select * from ffam_competition where 1";
+    $query = "select f.*, c.libelle from ffam_competition f inner join core_categorie c on f.catid = c.id where 1";
     $paramArray = array();
-    addFilterParamIfExists($paramArray, $query, "typeid");
+    addFilterParamIfExists($paramArray, $query, "typeid", "f");
     getGeneric($resultObj, $query, $paramArray);
 });
 
@@ -148,7 +149,7 @@ Flight::route ("GET /competitions/flights", function() {
     global $resultObj, $logger;
     $query = "select f.*, c.libelle from ffam_competition f inner join core_categorie c on f.catid = c.id where 1";
     $paramArray = array();
-    addFilterParamIfExists($paramArray, $query, "typeid");
+    addFilterParamIfExists($paramArray, $query, "typeid", "f");
     getGeneric($resultObj, $query, $paramArray);
 
     if ($resultObj["result"] === "success") {
