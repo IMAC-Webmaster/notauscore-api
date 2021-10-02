@@ -342,6 +342,27 @@ function getDetailsForCompetitions(&$resultObj) {
             }
             mergeResultMessages($resultObj, $noteResultsObj);
             unset ($noteResultsObj);
+
+            // Now add the MPP list for this flight.
+            $flight["mpps"] = array();
+            $mppResultsObj = createEmptyResultObject();
+
+            $mppQry = "SELECT pilid
+                                FROM `ffam_imac_mpp`
+                                WHERE volid = :volid AND cmpid = :cmpid
+                                ORDER BY pilid;";
+
+            $mppParamArray = array(
+                "cmpid" => $flight["cmpid"],
+                "volid" => $flight["volid"],
+            );
+
+            getGeneric($mppResultsObj, $mppQry, $mppParamArray);
+            mergeResultMessages($resultObj, $mppResultsObj);
+            foreach($mppResultsObj["data"] as $mpp) {
+                array_push($flight["mpps"], $mpp["pilid"]);
+            }
+            unset($mppResultsObj);
         }
         unset ($flight);
 
@@ -356,6 +377,7 @@ function getDetailsForCompetitions(&$resultObj) {
             //stripColumnsFromResults($prog["figures"] , "prgid");
             mergeResultMessages($resultObj, $figResultsObj);
             unset ($figResultsObj);
+
         }
 
     }

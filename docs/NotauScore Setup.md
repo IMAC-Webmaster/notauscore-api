@@ -109,7 +109,7 @@ Should read:
 # It is possible to fall back to a static IP if DHCP fails:
 # define static profile
 profile static_eth0
-static ip_address=192.168.100.200/24
+static ip_address=192.168.200.200/24
 #static ip_address=192.168.1.23/24
 #static routers=192.168.1.1
 #static domain_name_servers=192.168.1.1
